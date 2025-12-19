@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Absensi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <style>
+        /* --- CSS VARIABLES & RESET --- */
+        :root {
+            --primary: #4A6C5B; /* Sage Green */
+            --bg: #F2F4F3;
+            --white: #FFFFFF;
+            --text-dark: #1F2937;
+            --text-gray: #6B7280;
+            --danger: #EF4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background-color: #e0e0e0; display: flex; justify-content: center; min-height: 100vh; }
+        
+        /* --- MAIN CONTAINER --- */
+        .app-container {
+            background-color: var(--bg); width: 100%; max-width: 414px; height: 100vh;
+            position: relative; overflow: hidden; display: flex; flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        /* --- PAGES & ANIMATION --- */
+        .page-section { display: none; height: 100%; overflow-y: auto; padding-bottom: 90px; animation: fadeIn 0.3s; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from{opacity:0; transform:translateY(5px)} to{opacity:1; transform:translateY(0)} }
+
+        /* --- HEADER --- */
+        .header { padding: 40px 20px 20px; background: var(--bg); }
+        .user-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .greeting h2 { font-size: 20px; color: var(--text-dark); }
+        .greeting p { font-size: 14px; color: var(--text-gray); }
+        .location-badge {
+            display: inline-flex; align-items: center; background: var(--primary); color: white;
+            padding: 5px 12px; border-radius: 20px; font-size: 12px; gap: 5px;
+        }
+
+        /* --- STATS CARDS --- */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 0 20px; }
+        .card { background: var(--white); padding: 15px; border-radius: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); cursor: pointer; transition: 0.2s; }
+        .card:active { transform: scale(0.98); }
+        .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 12px; color: var(--text-gray); }
+        .card-val { font-size: 22px; font-weight: 600; color: var(--text-dark); }
+
+        /* --- HISTORY LIST --- */
+        .section-title { display: flex; justify-content: space-between; padding: 25px 20px 15px; font-weight: 600; color: var(--text-dark); }
+        .list-container { padding: 0 20px; }
+        .hist-item { background: var(--white); padding: 15px; border-radius: 16px; display: flex; gap: 15px; margin-bottom: 10px; align-items: center; }
+        .date-box { background: var(--primary); color: white; padding: 10px; border-radius: 12px; text-align: center; min-width: 50px; }
+        .date-box span { display: block; font-size: 18px; font-weight: bold; }
+        .time-row { display: flex; justify-content: space-between; width: 100%; font-size: 12px; }
+        .t-col { display: flex; flex-direction: column; }
+        .t-val { font-weight: 600; } 
+        .t-lbl { font-size: 9px; color: var(--text-gray); }
+
+        /* --- FORM ELEMENTS (LEAVE) --- */
+        .form-group { margin-bottom: 15px; padding: 0 20px; }
+        .label { font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block; }
+        .input-box { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 12px; background: var(--white); outline: none; }
+        .btn-submit { width: 90%; margin: 10px 5%; background: var(--primary); color: white; padding: 15px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer; }
+
+        /* --- BOTTOM NAV --- */
+        .bottom-nav {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 90%; background: var(--white); padding: 12px 20px; border-radius: 25px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1); z-index: 100;
+        }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-gray); font-size: 10px; gap: 4px; cursor: pointer; }
+        .nav-item.active { color: var(--text-dark); font-weight: 600; }
+        .scan-btn {
+            background: var(--primary); color: white; width: 50px; height: 50px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; font-size: 20px;
+            margin-top: -30px; border: 4px solid var(--bg); cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+
+        <div id="page-home" class="page-section active">
+            <div class="header">
+                <div class="user-row">
+                    <div class="greeting">
+                        <p>Good Morning,</p>
+                        <h2 id="u-name">Loading...</h2>
+                        <p id="u-pos" style="font-size:12px; color:#6B7280;">...</p>
+                    </div>
+                    <i class="fa-solid fa-right-from-bracket" onclick="doLogout()" style="color:var(--danger); cursor:pointer; font-size:18px;"></i>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <p style="font-size: 12px; color: #6B7280;" id="current-date">Today</p>
+                    <div class="location-badge">
+                        <i class="fa-solid fa-location-dot"></i> <span id="loc-status">Detecting...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="card" onclick="checkIn()">
+                    <div class="card-head"><i class="fa-solid fa-arrow-right-to-bracket" style="color:var(--primary)"></i> Check In</div>
+                    <div class="card-val" id="t-in">--:--</div>
+                    <div style="font-size:10px; color:gray">Tap to Record</div>
+                </div>
+                <div class="card" onclick="checkOut()">
+                    <div class="card-head"><i class="fa-solid fa-arrow-right-from-bracket" style="color:var(--primary)"></i> Check Out</div>
+                    <div class="card-val" id="t-out" style="color:#ccc">--:--</div>
+                    <div style="font-size:10px; color:gray">Tap to Record</div>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <span>Recent History</span>
+                <span style="font-size:12px; color:var(--primary)">See More</span>
+            </div>
+
+            <div class="list-container" id="history-list">
+                <p style="text-align:center; font-size:12px; color:gray; margin-top:20px;">Loading History...</p>
+            </div>
+        </div>
+
+        <div id="page-leave" class="page-section">
+            <div style="padding:30px 20px; text-align:center; background:white; font-weight:600; margin-bottom:20px;">Form Pengajuan Cuti</div>
+            
+            <div class="form-group">
+                <label class="label">Tipe Cuti</label>
+                <select id="l-type" class="input-box">
+                    <option value="Annual">Cuti Tahunan</option>
+                    <option value="Sick">Sakit</option>
+                    <option value="Unpaid">Tanpa Gaji</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="label">Tanggal Mulai</label>
+                <input type="date" id="l-start" class="input-box">
+            </div>
+            <div class="form-group">
+                <label class="label">Tanggal Selesai</label>
+                <input type="date" id="l-end" class="input-box">
+            </div>
+            <div class="form-group">
+                <label class="label">Alasan</label>
+                <textarea id="l-reason" rows="3" class="input-box" placeholder="Jelaskan alasan cuti..."></textarea>
+            </div>
+            <button class="btn-submit" onclick="submitLeave()">Kirim Pengajuan</button>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item active" id="nav-home" onclick="navigate('home')">
+                <i class="fa-solid fa-house"></i> <span>Home</span>
+            </div>
+            <div class="nav-item">
+                <i class="fa-solid fa-chart-simple"></i> <span>Analytics</span>
+            </div>
+            <div class="scan-btn">
+                <i class="fa-solid fa-expand"></i>
+            </div>
+            <div class="nav-item" id="nav-leave" onclick="navigate('leave')">
+                <i class="fa-solid fa-calendar-minus"></i> <span>Leave</span>
+            </div>
+            <div class="nav-item">
+                <i class="fa-solid fa-gear"></i> <span>Settings</span>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. KONFIGURASI SUPABASE (WAJIB DIISI) ---
+        const SUPABASE_URL = 'https://lvijzfpxqfydhtipyiym.supabase.co'; // GANTI INI
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2aWp6ZnB4cWZ5ZGh0aXB5aXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwNzQyNjMsImV4cCI6MjA4MDY1MDI2M30.G0usZfXe5iScXKiRqESLowoM0JiBITZ1VLNY5M9jNE8'; // GANTI INI
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let USER_ID = null;
+
+        // --- 2. INITIALIZATION ---
+        async function init() {
+            // Cek Sesi Login
+            const { data } = await supabase.auth.getSession();
+            if (!data.session) {
+                window.location.href = 'login.html'; // Redirect jika belum login
+                return;
+            }
+            USER_ID = data.session.user.id;
+
+            // Load Tanggal Hari Ini
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', options);
+
+            // Jalankan Fungsi Load Data
+            loadProfile();
+            loadAttendanceToday();
+            loadHistory();
+            getGeoLocation();
+        }
+
+        // --- 3. FETCH DATA FUNCTIONS ---
+        async function loadProfile() {
+            // Mengambil data dari tabel 'profiles'
+            const { data, error } = await supabase.from('profiles').select('*').eq('id', USER_ID).single();
+            if (data) {
+                document.getElementById('u-name').innerText = data.full_name;
+                document.getElementById('u-pos').innerText = data.position || 'Employee';
+            }
+        }
+
+        async function loadAttendanceToday() {
+            const today = new Date().toISOString().split('T')[0];
+            // Mengambil data dari tabel 'attendance'
+            const { data } = await supabase.from('attendance')
+                .select('*')
+                .eq('user_id', USER_ID)
+                .eq('date', today)
+                .single();
+
+            if (data) {
+                if(data.time_in) {
+                    document.getElementById('t-in').innerText = data.time_in.slice(0,5);
+                    document.getElementById('t-in').style.color = '#1F2937';
+                }
+                if(data.time_out) {
+                    document.getElementById('t-out').innerText = data.time_out.slice(0,5);
+                    document.getElementById('t-out').style.color = '#1F2937';
+                }
+            }
+        }
+
+        async function loadHistory() {
+            // Mengambil 5 data terakhir dari 'attendance'
+            const { data } = await supabase.from('attendance')
+                .select('*')
+                .eq('user_id', USER_ID)
+                .order('date', {ascending: false})
+                .limit(5);
+
+            const container = document.getElementById('history-list');
+            if (data && data.length > 0) {
+                container.innerHTML = ''; // Clear loading text
+                data.forEach(item => {
+                    const d = new Date(item.date);
+                    const dateNum = d.getDate();
+                    const dayName = d.toLocaleDateString('en-US', {weekday: 'short'});
+                    
+                    const html = `
+                    <div class="hist-item">
+                        <div class="date-box"><span>${dateNum}</span><small>${dayName}</small></div>
+                        <div style="flex-grow:1">
+                            <div class="time-row">
+                                <div class="t-col"><span class="t-val">${item.time_in ? item.time_in.slice(0,5) : '--:--'}</span><span class="t-lbl">In</span></div>
+                                <div class="t-col"><span class="t-val">${item.time_out ? item.time_out.slice(0,5) : '--:--'}</span><span class="t-lbl">Out</span></div>
+                                <div class="t-col"><span class="t-val">${item.status || 'Present'}</span><span class="t-lbl">Status</span></div>
+                            </div>
+                        </div>
+                    </div>`;
+                    container.innerHTML += html;
+                });
+            } else {
+                container.innerHTML = '<p style="text-align:center; font-size:12px; color:gray;">Belum ada riwayat.</p>';
+            }
+        }
+
+        // --- 4. ACTION FUNCTIONS ---
+        let currentLat = 0;
+        let currentLong = 0;
+
+        function getGeoLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    currentLat = position.coords.latitude;
+                    currentLong = position.coords.longitude;
+                    document.getElementById('loc-status').innerText = "Location Active";
+                }, () => {
+                    document.getElementById('loc-status').innerText = "Location Off";
+                });
+            }
+        }
+
+        async function checkIn() {
+            const today = new Date().toISOString().split('T')[0];
+            const timeNow = new Date().toTimeString().split(' ')[0];
+
+            // Insert ke tabel 'attendance'
+            const { error } = await supabase.from('attendance').insert({
+                user_id: USER_ID,
+                date: today,
+                time_in: timeNow,
+                status: 'Present',
+                location_lat: currentLat,
+                location_long: currentLong
+            });
+
+            if (error) alert("Gagal Check In: " + error.message);
+            else { alert("Berhasil Check In!"); loadAttendanceToday(); loadHistory(); }
+        }
+
+        async function checkOut() {
+            const today = new Date().toISOString().split('T')[0];
+            const timeNow = new Date().toTimeString().split(' ')[0];
+
+            // Update tabel 'attendance'
+            const { error } = await supabase.from('attendance')
+                .update({ time_out: timeNow })
+                .eq('user_id', USER_ID)
+                .eq('date', today);
+
+            if (error) alert("Gagal Check Out: " + error.message);
+            else { alert("Berhasil Check Out!"); loadAttendanceToday(); loadHistory(); }
+        }
+
+        async function submitLeave() {
+            const type = document.getElementById('l-type').value;
+            const start = document.getElementById('l-start').value;
+            const end = document.getElementById('l-end').value;
+            const reason = document.getElementById('l-reason').value;
+
+            if(!start || !end) return alert("Mohon isi tanggal!");
+
+            // Insert ke tabel 'leaves'
+            const { error } = await supabase.from('leaves').insert({
+                user_id: USER_ID,
+                type: type,
+                start_date: start,
+                end_date: end,
+                reason: reason,
+                status: 'Pending'
+            });
+
+            if (error) alert("Gagal: " + error.message);
+            else { alert("Cuti Berhasil Diajukan!"); navigate('home'); }
+        }
+
+        async function doLogout() {
+            await supabase.auth.signOut();
+            window.location.href = 'login.html';
+        }
+
+        // --- 5. NAVIGATION ---
+        function navigate(pageId) {
+            document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+            document.getElementById('page-' + pageId).classList.add('active');
+            
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            const activeNav = document.getElementById('nav-' + pageId);
+            if(activeNav) activeNav.classList.add('active');
+        }
+
+        // --- RUN ON START ---
+        window.onload = init;
+
+    </script>
+</body>
+</html>
