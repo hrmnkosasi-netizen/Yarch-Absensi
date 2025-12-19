@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Absensi</title>
+    <title>Aplikasi Absensi OnePage</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     
     <style>
-        /* --- CSS VARIABLES & RESET --- */
+        /* --- CSS RESET & VARIABLES --- */
         :root {
             --primary: #4A6C5B; /* Sage Green */
             --bg: #F2F4F3;
@@ -21,84 +21,120 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
         body { background-color: #e0e0e0; display: flex; justify-content: center; min-height: 100vh; }
         
-        /* --- MAIN CONTAINER --- */
-        .app-container {
+        /* --- MAIN CONTAINER (MOBILE VIEW) --- */
+        #app-container {
             background-color: var(--bg); width: 100%; max-width: 414px; height: 100vh;
             position: relative; overflow: hidden; display: flex; flex-direction: column;
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
         }
 
-        /* --- PAGES & ANIMATION --- */
-        .page-section { display: none; height: 100%; overflow-y: auto; padding-bottom: 90px; animation: fadeIn 0.3s; }
-        .page-section.active { display: block; }
-        @keyframes fadeIn { from{opacity:0; transform:translateY(5px)} to{opacity:1; transform:translateY(0)} }
+        /* --- SCREENS MANAGEMENT --- */
+        .screen { display: none; height: 100%; overflow-y: auto; padding-bottom: 20px; animation: fadeIn 0.3s; }
+        .screen.active { display: block; }
+        @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
 
-        /* --- HEADER --- */
+        /* --- AUTH SCREEN (LOGIN/REGISTER) --- */
+        .auth-content { padding: 40px 30px; display: flex; flex-direction: column; justify-content: center; height: 100%; background: var(--white); }
+        .auth-title { font-size: 24px; color: var(--primary); margin-bottom: 5px; font-weight: 600; text-align: center; }
+        .auth-sub { font-size: 14px; color: var(--text-gray); margin-bottom: 30px; text-align: center; }
+        .input-group { margin-bottom: 15px; }
+        .input-field { width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 12px; background: #F9FAFB; outline: none; font-size: 14px; }
+        .btn-primary { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+        .btn-primary:active { transform: scale(0.98); }
+        .toggle-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-gray); }
+        .toggle-link span { color: var(--primary); font-weight: 600; cursor: pointer; }
+
+        /* --- DASHBOARD ELEMENTS --- */
         .header { padding: 40px 20px 20px; background: var(--bg); }
         .user-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .greeting h2 { font-size: 20px; color: var(--text-dark); }
-        .greeting p { font-size: 14px; color: var(--text-gray); }
-        .location-badge {
-            display: inline-flex; align-items: center; background: var(--primary); color: white;
-            padding: 5px 12px; border-radius: 20px; font-size: 12px; gap: 5px;
-        }
-
-        /* --- STATS CARDS --- */
+        .location-badge { display: inline-flex; align-items: center; background: var(--primary); color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; gap: 5px; }
+        
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 0 20px; }
-        .card { background: var(--white); padding: 15px; border-radius: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); cursor: pointer; transition: 0.2s; }
-        .card:active { transform: scale(0.98); }
+        .card { background: var(--white); padding: 15px; border-radius: 16px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
         .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 12px; color: var(--text-gray); }
         .card-val { font-size: 22px; font-weight: 600; color: var(--text-dark); }
 
-        /* --- HISTORY LIST --- */
-        .section-title { display: flex; justify-content: space-between; padding: 25px 20px 15px; font-weight: 600; color: var(--text-dark); }
-        .list-container { padding: 0 20px; }
+        .list-container { padding: 0 20px; margin-top: 10px; padding-bottom: 100px; }
         .hist-item { background: var(--white); padding: 15px; border-radius: 16px; display: flex; gap: 15px; margin-bottom: 10px; align-items: center; }
         .date-box { background: var(--primary); color: white; padding: 10px; border-radius: 12px; text-align: center; min-width: 50px; }
         .date-box span { display: block; font-size: 18px; font-weight: bold; }
         .time-row { display: flex; justify-content: space-between; width: 100%; font-size: 12px; }
-        .t-col { display: flex; flex-direction: column; }
-        .t-val { font-weight: 600; } 
-        .t-lbl { font-size: 9px; color: var(--text-gray); }
-
-        /* --- FORM ELEMENTS (LEAVE) --- */
-        .form-group { margin-bottom: 15px; padding: 0 20px; }
-        .label { font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block; }
-        .input-box { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 12px; background: var(--white); outline: none; }
-        .btn-submit { width: 90%; margin: 10px 5%; background: var(--primary); color: white; padding: 15px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer; }
-
+        
         /* --- BOTTOM NAV --- */
-        .bottom-nav {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; background: var(--white); padding: 12px 20px; border-radius: 25px;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1); z-index: 100;
-        }
+        .bottom-nav { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; background: var(--white); padding: 12px 20px; border-radius: 25px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 5px 20px rgba(0,0,0,0.1); z-index: 100; }
         .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-gray); font-size: 10px; gap: 4px; cursor: pointer; }
         .nav-item.active { color: var(--text-dark); font-weight: 600; }
-        .scan-btn {
-            background: var(--primary); color: white; width: 50px; height: 50px; border-radius: 50%;
-            display: flex; justify-content: center; align-items: center; font-size: 20px;
-            margin-top: -30px; border: 4px solid var(--bg); cursor: pointer;
-        }
+        .scan-btn { background: var(--primary); color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; margin-top: -30px; border: 4px solid var(--bg); cursor: pointer; }
+        
+        /* Loading Overlay */
+        #loading-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div class="app-container">
+    <div id="app-container">
+        <div id="loading-overlay">
+            <div class="spinner"></div>
+            <p>Memuat Data...</p>
+        </div>
 
-        <div id="page-home" class="page-section active">
+        <div id="screen-login" class="screen">
+            <div class="auth-content">
+                <div class="auth-title">Welcome Back</div>
+                <div class="auth-sub">Silakan login untuk absen</div>
+                
+                <div class="input-group">
+                    <input type="email" id="login-email" class="input-field" placeholder="Email Address">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="login-pass" class="input-field" placeholder="Password">
+                </div>
+                
+                <button class="btn-primary" onclick="handleLogin()">Sign In</button>
+                
+                <div class="toggle-link">
+                    Belum punya akun? <span onclick="switchScreen('register')">Register</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-register" class="screen">
+            <div class="auth-content">
+                <div class="auth-title">Create Account</div>
+                <div class="auth-sub">Daftar akun karyawan baru</div>
+                
+                <div class="input-group">
+                    <input type="text" id="reg-name" class="input-field" placeholder="Nama Lengkap">
+                </div>
+                <div class="input-group">
+                    <input type="email" id="reg-email" class="input-field" placeholder="Email Address">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="reg-pass" class="input-field" placeholder="Password (Min 6 Karakter)">
+                </div>
+                
+                <button class="btn-primary" onclick="handleRegister()">Register</button>
+                
+                <div class="toggle-link">
+                    Sudah punya akun? <span onclick="switchScreen('login')">Login</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-dashboard" class="screen">
             <div class="header">
                 <div class="user-row">
-                    <div class="greeting">
-                        <p>Good Morning,</p>
-                        <h2 id="u-name">Loading...</h2>
-                        <p id="u-pos" style="font-size:12px; color:#6B7280;">...</p>
+                    <div>
+                        <p style="font-size:14px; color:#6B7280;">Good Morning,</p>
+                        <h2 id="user-name" style="font-size:20px; color:#1F2937;">User</h2>
+                        <p id="user-role" style="font-size:12px; color:#6B7280;">Employee</p>
                     </div>
-                    <i class="fa-solid fa-right-from-bracket" onclick="doLogout()" style="color:var(--danger); cursor:pointer; font-size:18px;"></i>
+                    <i class="fa-solid fa-right-from-bracket" onclick="handleLogout()" style="color:#EF4444; cursor:pointer; font-size:20px;"></i>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                    <p style="font-size: 12px; color: #6B7280;" id="current-date">Today</p>
+                    <p style="font-size: 12px; color: #6B7280;" id="today-date">Today</p>
                     <div class="location-badge">
                         <i class="fa-solid fa-location-dot"></i> <span id="loc-status">Detecting...</span>
                     </div>
@@ -106,256 +142,237 @@
             </div>
 
             <div class="stats-grid">
-                <div class="card" onclick="checkIn()">
+                <div class="card" onclick="doCheckIn()">
                     <div class="card-head"><i class="fa-solid fa-arrow-right-to-bracket" style="color:var(--primary)"></i> Check In</div>
-                    <div class="card-val" id="t-in">--:--</div>
-                    <div style="font-size:10px; color:gray">Tap to Record</div>
+                    <div class="card-val" id="val-in">--:--</div>
                 </div>
-                <div class="card" onclick="checkOut()">
+                <div class="card" onclick="doCheckOut()">
                     <div class="card-head"><i class="fa-solid fa-arrow-right-from-bracket" style="color:var(--primary)"></i> Check Out</div>
-                    <div class="card-val" id="t-out" style="color:#ccc">--:--</div>
-                    <div style="font-size:10px; color:gray">Tap to Record</div>
+                    <div class="card-val" id="val-out" style="color:#ccc">--:--</div>
                 </div>
             </div>
 
-            <div class="section-title">
+            <div style="padding: 25px 20px 10px; font-weight: 600; color: #1F2937; display:flex; justify-content:space-between;">
                 <span>Recent History</span>
-                <span style="font-size:12px; color:var(--primary)">See More</span>
+                <span style="font-size:12px; color:var(--primary); cursor:pointer;">See More</span>
             </div>
 
             <div class="list-container" id="history-list">
-                <p style="text-align:center; font-size:12px; color:gray; margin-top:20px;">Loading History...</p>
+                </div>
+
+            <div class="bottom-nav">
+                <div class="nav-item active"><i class="fa-solid fa-house"></i> <span>Home</span></div>
+                <div class="nav-item"><i class="fa-solid fa-chart-simple"></i> <span>Stats</span></div>
+                <div class="scan-btn"><i class="fa-solid fa-expand"></i></div>
+                <div class="nav-item" onclick="switchScreen('leave')"><i class="fa-solid fa-calendar-minus"></i> <span>Leave</span></div>
+                <div class="nav-item"><i class="fa-solid fa-gear"></i> <span>Set</span></div>
             </div>
         </div>
 
-        <div id="page-leave" class="page-section">
-            <div style="padding:30px 20px; text-align:center; background:white; font-weight:600; margin-bottom:20px;">Form Pengajuan Cuti</div>
-            
-            <div class="form-group">
-                <label class="label">Tipe Cuti</label>
-                <select id="l-type" class="input-box">
-                    <option value="Annual">Cuti Tahunan</option>
-                    <option value="Sick">Sakit</option>
-                    <option value="Unpaid">Tanpa Gaji</option>
-                </select>
+        <div id="screen-leave" class="screen">
+            <div style="padding:30px 20px; text-align:center; background:white; font-weight:600; margin-bottom:20px;">
+                <i class="fa-solid fa-arrow-left" style="float:left; cursor:pointer;" onclick="switchScreen('dashboard')"></i>
+                Form Cuti
             </div>
-            <div class="form-group">
-                <label class="label">Tanggal Mulai</label>
-                <input type="date" id="l-start" class="input-box">
-            </div>
-            <div class="form-group">
-                <label class="label">Tanggal Selesai</label>
-                <input type="date" id="l-end" class="input-box">
-            </div>
-            <div class="form-group">
-                <label class="label">Alasan</label>
-                <textarea id="l-reason" rows="3" class="input-box" placeholder="Jelaskan alasan cuti..."></textarea>
-            </div>
-            <button class="btn-submit" onclick="submitLeave()">Kirim Pengajuan</button>
-        </div>
-
-        <div class="bottom-nav">
-            <div class="nav-item active" id="nav-home" onclick="navigate('home')">
-                <i class="fa-solid fa-house"></i> <span>Home</span>
-            </div>
-            <div class="nav-item">
-                <i class="fa-solid fa-chart-simple"></i> <span>Analytics</span>
-            </div>
-            <div class="scan-btn">
-                <i class="fa-solid fa-expand"></i>
-            </div>
-            <div class="nav-item" id="nav-leave" onclick="navigate('leave')">
-                <i class="fa-solid fa-calendar-minus"></i> <span>Leave</span>
-            </div>
-            <div class="nav-item">
-                <i class="fa-solid fa-gear"></i> <span>Settings</span>
+            <div style="padding: 20px;">
+                <div class="input-group">
+                    <label style="font-size:12px; font-weight:600;">Tipe</label>
+                    <select id="leave-type" class="input-field">
+                        <option value="Annual">Tahunan</option>
+                        <option value="Sick">Sakit</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label style="font-size:12px; font-weight:600;">Mulai</label>
+                    <input type="date" id="leave-start" class="input-field">
+                </div>
+                <div class="input-group">
+                    <label style="font-size:12px; font-weight:600;">Selesai</label>
+                    <input type="date" id="leave-end" class="input-field">
+                </div>
+                <div class="input-group">
+                    <label style="font-size:12px; font-weight:600;">Alasan</label>
+                    <textarea id="leave-reason" class="input-field" rows="3"></textarea>
+                </div>
+                <button class="btn-primary" onclick="submitLeave()">Kirim</button>
             </div>
         </div>
 
     </div>
 
     <script>
-        // --- 1. KONFIGURASI SUPABASE (WAJIB DIISI) ---
+        // --- 1. CONFIG (GANTI DENGAN PUNYA ANDA) ---
         const SUPABASE_URL = 'https://lvijzfpxqfydhtipyiym.supabase.co'; // GANTI INI
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2aWp6ZnB4cWZ5ZGh0aXB5aXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwNzQyNjMsImV4cCI6MjA4MDY1MDI2M30.G0usZfXe5iScXKiRqESLowoM0JiBITZ1VLNY5M9jNE8'; // GANTI INI
         
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let USER_ID = null;
 
-        // --- 2. INITIALIZATION ---
-        async function init() {
-            // Cek Sesi Login
+        // --- 2. APP STARTUP ---
+        window.onload = async () => {
             const { data } = await supabase.auth.getSession();
-            if (!data.session) {
-                window.location.href = 'login.html'; // Redirect jika belum login
-                return;
-            }
-            USER_ID = data.session.user.id;
-
-            // Load Tanggal Hari Ini
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', options);
-
-            // Jalankan Fungsi Load Data
-            loadProfile();
-            loadAttendanceToday();
-            loadHistory();
-            getGeoLocation();
-        }
-
-        // --- 3. FETCH DATA FUNCTIONS ---
-        async function loadProfile() {
-            // Mengambil data dari tabel 'profiles'
-            const { data, error } = await supabase.from('profiles').select('*').eq('id', USER_ID).single();
-            if (data) {
-                document.getElementById('u-name').innerText = data.full_name;
-                document.getElementById('u-pos').innerText = data.position || 'Employee';
-            }
-        }
-
-        async function loadAttendanceToday() {
-            const today = new Date().toISOString().split('T')[0];
-            // Mengambil data dari tabel 'attendance'
-            const { data } = await supabase.from('attendance')
-                .select('*')
-                .eq('user_id', USER_ID)
-                .eq('date', today)
-                .single();
-
-            if (data) {
-                if(data.time_in) {
-                    document.getElementById('t-in').innerText = data.time_in.slice(0,5);
-                    document.getElementById('t-in').style.color = '#1F2937';
-                }
-                if(data.time_out) {
-                    document.getElementById('t-out').innerText = data.time_out.slice(0,5);
-                    document.getElementById('t-out').style.color = '#1F2937';
-                }
-            }
-        }
-
-        async function loadHistory() {
-            // Mengambil 5 data terakhir dari 'attendance'
-            const { data } = await supabase.from('attendance')
-                .select('*')
-                .eq('user_id', USER_ID)
-                .order('date', {ascending: false})
-                .limit(5);
-
-            const container = document.getElementById('history-list');
-            if (data && data.length > 0) {
-                container.innerHTML = ''; // Clear loading text
-                data.forEach(item => {
-                    const d = new Date(item.date);
-                    const dateNum = d.getDate();
-                    const dayName = d.toLocaleDateString('en-US', {weekday: 'short'});
-                    
-                    const html = `
-                    <div class="hist-item">
-                        <div class="date-box"><span>${dateNum}</span><small>${dayName}</small></div>
-                        <div style="flex-grow:1">
-                            <div class="time-row">
-                                <div class="t-col"><span class="t-val">${item.time_in ? item.time_in.slice(0,5) : '--:--'}</span><span class="t-lbl">In</span></div>
-                                <div class="t-col"><span class="t-val">${item.time_out ? item.time_out.slice(0,5) : '--:--'}</span><span class="t-lbl">Out</span></div>
-                                <div class="t-col"><span class="t-val">${item.status || 'Present'}</span><span class="t-lbl">Status</span></div>
-                            </div>
-                        </div>
-                    </div>`;
-                    container.innerHTML += html;
-                });
+            if (data.session) {
+                USER_ID = data.session.user.id;
+                await loadDashboardData();
+                switchScreen('dashboard');
             } else {
-                container.innerHTML = '<p style="text-align:center; font-size:12px; color:gray;">Belum ada riwayat.</p>';
+                switchScreen('login');
+            }
+            document.getElementById('loading-overlay').style.display = 'none';
+            
+            // Set Date
+            const options = { weekday: 'long', day: 'numeric', month: 'long' };
+            document.getElementById('today-date').innerText = new Date().toLocaleDateString('en-US', options);
+        };
+
+        // --- 3. AUTH FUNCTIONS ---
+        async function handleLogin() {
+            showLoading(true);
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+            
+            const { data, error } = await supabase.auth.signInWithPassword({ email: email, password: pass });
+            if (error) {
+                alert("Login Gagal: " + error.message);
+                showLoading(false);
+            } else {
+                USER_ID = data.user.id;
+                await ensureProfileExists(data.user); // JAGA-JAGA PROFIL HILANG
+                await loadDashboardData();
+                switchScreen('dashboard');
+                showLoading(false);
             }
         }
 
-        // --- 4. ACTION FUNCTIONS ---
-        let currentLat = 0;
-        let currentLong = 0;
+        async function handleRegister() {
+            showLoading(true);
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const pass = document.getElementById('reg-pass').value;
 
-        function getGeoLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition((position) => {
-                    currentLat = position.coords.latitude;
-                    currentLong = position.coords.longitude;
-                    document.getElementById('loc-status').innerText = "Location Active";
-                }, () => {
-                    document.getElementById('loc-status').innerText = "Location Off";
-                });
-            }
-        }
-
-        async function checkIn() {
-            const today = new Date().toISOString().split('T')[0];
-            const timeNow = new Date().toTimeString().split(' ')[0];
-
-            // Insert ke tabel 'attendance'
-            const { error } = await supabase.from('attendance').insert({
-                user_id: USER_ID,
-                date: today,
-                time_in: timeNow,
-                status: 'Present',
-                location_lat: currentLat,
-                location_long: currentLong
+            const { data, error } = await supabase.auth.signUp({
+                email: email, password: pass,
+                options: { data: { full_name: name } }
             });
 
-            if (error) alert("Gagal Check In: " + error.message);
-            else { alert("Berhasil Check In!"); loadAttendanceToday(); loadHistory(); }
+            if (error) {
+                alert("Register Gagal: " + error.message);
+                showLoading(false);
+            } else {
+                // MANUAL INSERT PROFILE (Backup jika trigger gagal)
+                if (data.user) await ensureProfileExists(data.user, name);
+                
+                alert("Berhasil! Silakan Login.");
+                switchScreen('login');
+                showLoading(false);
+            }
         }
 
-        async function checkOut() {
+        async function handleLogout() {
+            await supabase.auth.signOut();
+            window.location.reload();
+        }
+
+        // --- 4. DATA FUNCTIONS ---
+        // Fungsi "Penyelamat" jika profil kosong
+        async function ensureProfileExists(user, nameInput = '') {
+            const { data } = await supabase.from('profiles').select('id').eq('id', user.id).single();
+            if (!data) {
+                const fullName = nameInput || user.user_metadata.full_name || 'User Baru';
+                await supabase.from('profiles').insert({
+                    id: user.id, email: user.email, full_name: fullName, position: 'Employee'
+                });
+            }
+        }
+
+        async function loadDashboardData() {
+            try {
+                // Load Profile
+                const { data: prof } = await supabase.from('profiles').select('*').eq('id', USER_ID).single();
+                if (prof) {
+                    document.getElementById('user-name').innerText = prof.full_name;
+                    document.getElementById('user-role').innerText = prof.position || 'Staff';
+                }
+
+                // Load Today Attendance
+                const today = new Date().toISOString().split('T')[0];
+                const { data: att } = await supabase.from('attendance').select('*').eq('user_id', USER_ID).eq('date', today).single();
+                
+                if (att) {
+                    if (att.time_in) document.getElementById('val-in').innerText = att.time_in.slice(0,5);
+                    if (att.time_out) document.getElementById('val-out').innerText = att.time_out.slice(0,5);
+                }
+
+                // Load History
+                const { data: hist } = await supabase.from('attendance').select('*').eq('user_id', USER_ID).order('date', {ascending: false}).limit(5);
+                const listDiv = document.getElementById('history-list');
+                listDiv.innerHTML = '';
+                
+                if (hist && hist.length > 0) {
+                    hist.forEach(h => {
+                        const d = new Date(h.date);
+                        const html = `
+                        <div class="hist-item">
+                            <div class="date-box"><span>${d.getDate()}</span></div>
+                            <div style="flex-grow:1">
+                                <div class="time-row">
+                                    <div><b>${h.time_in?h.time_in.slice(0,5):'--'}</b><br><small>In</small></div>
+                                    <div><b>${h.time_out?h.time_out.slice(0,5):'--'}</b><br><small>Out</small></div>
+                                    <div><b>${h.status||'OK'}</b><br><small>Stat</small></div>
+                                </div>
+                            </div>
+                        </div>`;
+                        listDiv.innerHTML += html;
+                    });
+                } else {
+                    listDiv.innerHTML = '<p style="text-align:center; font-size:12px; color:gray">Belum ada history</p>';
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function doCheckIn() {
             const today = new Date().toISOString().split('T')[0];
-            const timeNow = new Date().toTimeString().split(' ')[0];
+            const time = new Date().toTimeString().split(' ')[0];
+            const { error } = await supabase.from('attendance').insert({
+                user_id: USER_ID, date: today, time_in: time, status: 'Present'
+            });
+            if (error) alert("Error: " + error.message);
+            else { alert("Check In Sukses!"); loadDashboardData(); }
+        }
 
-            // Update tabel 'attendance'
-            const { error } = await supabase.from('attendance')
-                .update({ time_out: timeNow })
-                .eq('user_id', USER_ID)
-                .eq('date', today);
-
-            if (error) alert("Gagal Check Out: " + error.message);
-            else { alert("Berhasil Check Out!"); loadAttendanceToday(); loadHistory(); }
+        async function doCheckOut() {
+            const today = new Date().toISOString().split('T')[0];
+            const time = new Date().toTimeString().split(' ')[0];
+            const { error } = await supabase.from('attendance').update({ time_out: time }).eq('user_id', USER_ID).eq('date', today);
+            if (error) alert("Error: " + error.message);
+            else { alert("Check Out Sukses!"); loadDashboardData(); }
         }
 
         async function submitLeave() {
-            const type = document.getElementById('l-type').value;
-            const start = document.getElementById('l-start').value;
-            const end = document.getElementById('l-end').value;
-            const reason = document.getElementById('l-reason').value;
+            const type = document.getElementById('leave-type').value;
+            const start = document.getElementById('leave-start').value;
+            const end = document.getElementById('leave-end').value;
+            const reason = document.getElementById('leave-reason').value;
 
-            if(!start || !end) return alert("Mohon isi tanggal!");
-
-            // Insert ke tabel 'leaves'
             const { error } = await supabase.from('leaves').insert({
-                user_id: USER_ID,
-                type: type,
-                start_date: start,
-                end_date: end,
-                reason: reason,
-                status: 'Pending'
+                user_id: USER_ID, type: type, start_date: start, end_date: end, reason: reason, status: 'Pending'
             });
 
             if (error) alert("Gagal: " + error.message);
-            else { alert("Cuti Berhasil Diajukan!"); navigate('home'); }
+            else { alert("Cuti Terkirim!"); switchScreen('dashboard'); }
         }
 
-        async function doLogout() {
-            await supabase.auth.signOut();
-            window.location.href = 'login.html';
+        // --- 5. UI UTILS ---
+        function switchScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-' + id).classList.add('active');
         }
 
-        // --- 5. NAVIGATION ---
-        function navigate(pageId) {
-            document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
-            document.getElementById('page-' + pageId).classList.add('active');
-            
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            const activeNav = document.getElementById('nav-' + pageId);
-            if(activeNav) activeNav.classList.add('active');
+        function showLoading(show) {
+            document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
         }
-
-        // --- RUN ON START ---
-        window.onload = init;
-
     </script>
 </body>
 </html>
